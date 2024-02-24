@@ -78,17 +78,17 @@ impl Wall {
 pub fn generate_walls(column_count: u8, row_count: u8) -> Vec<Vec<Wall>> {
     let mut walls = vec![];
 
-    for x in 0..row_count {
+    for y in 0..row_count {
         let mut row = vec![];
 
-        for y in 0..column_count {
+        for x in 0..column_count {
             let rng = rand::random::<u8>() % 6;
 
             match rng {
-                0 | 1 => row.push(Wall::new([x.into(), y.into()]).brick()),
-                2 => row.push(Wall::new([x.into(), y.into()]).concrete()),
-                3 => row.push(Wall::new([x.into(), y.into()]).net()),
-                _ => row.push(Wall::new([x.into(), y.into()]).empty()),
+                0 | 1 => row.push(Wall::new([x as i32, y as i32]).brick()),
+                2 => row.push(Wall::new([x as i32, y as i32]).concrete()),
+                3 => row.push(Wall::new([x as i32, y as i32]).net()),
+                _ => row.push(Wall::new([x as i32, y as i32]).empty()),
             }
         }
 

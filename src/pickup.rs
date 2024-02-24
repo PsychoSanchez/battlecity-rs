@@ -6,20 +6,20 @@ pub enum PickupType {
 }
 
 pub struct Pickup {
-    position: [f64; 2],
+    position: [i32; 2],
     variant: PickupType,
 }
 
 impl Pickup {
-    pub fn new(position: [f64; 2], variant: PickupType) -> Pickup {
+    pub fn new(position: [i32; 2], variant: PickupType) -> Pickup {
         Pickup { position, variant }
     }
 
-    pub fn get_position(&self) -> &[f64; 2] {
+    pub fn get_position(&self) -> &[i32; 2] {
         &self.position
     }
 
-    pub fn set_position(&mut self, position: [f64; 2]) {
+    pub fn set_position(&mut self, position: [i32; 2]) {
         self.position = position;
     }
 

@@ -1,5 +1,5 @@
 pub struct Animation {
-    position: [f64; 2],
+    position: [i32; 2],
     frames: Vec<[f64; 4]>,
     current_frame: usize,
     frame_duration: f64,
@@ -7,7 +7,7 @@ pub struct Animation {
 }
 
 impl Animation {
-    pub fn new(position: [f64; 2], frames: Vec<[f64; 4]>, frame_duration: f64) -> Animation {
+    pub fn new(position: [i32; 2], frames: Vec<[f64; 4]>, frame_duration: f64) -> Animation {
         Animation {
             position,
             frames,
@@ -30,7 +30,7 @@ impl Animation {
         &self.frames[self.current_frame]
     }
 
-    pub fn get_position(&self) -> &[f64; 2] {
+    pub fn get_position(&self) -> &[i32; 2] {
         &self.position
     }
 }
