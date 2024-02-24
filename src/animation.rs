@@ -1,4 +1,4 @@
-use crate::render::GameRenderObject;
+use crate::{render::GameRenderObject, EXPLOSION_FRAMES, SPAWN_FRAMES};
 
 pub struct Animation {
     position: [i32; 2],
@@ -20,6 +20,10 @@ impl GameRenderObject for Animation {
     fn get_position(&self) -> &[i32; 2] {
         &self.position
     }
+
+    fn get_previous_position(&self) -> &[i32; 2] {
+        &self.position
+    }
 }
 
 impl Animation {
@@ -33,6 +37,14 @@ impl Animation {
         }
     }
 
+    pub fn new_explosion(position: [i32; 2]) -> Animation {
+        Animation::new(position, EXPLOSION_FRAMES.to_vec(), 0.1)
+    }
+
+    pub fn new_spawn(position: [i32; 2]) -> Animation {
+        Animation::new(position, SPAWN_FRAMES.to_vec(), 0.1)
+    }
+
     pub fn update(&mut self, dt: f64) {
         self.frame_dt += dt;
 
@@ -40,5 +52,9 @@ impl Animation {
             self.frame_dt = 0.0;
             self.current_frame = self.current_frame + 1 % self.frames.len();
         }
+    }
+
+    pub fn is_finished(&self) -> bool {
+        self.current_frame == self.frames.len() - 1
     }
 }

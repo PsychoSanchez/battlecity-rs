@@ -4,6 +4,7 @@ use crate::{
 };
 
 pub struct Projectile {
+    owner_id: u32,
     position: [[i32; 2]; 2],
     direction: LookDirection,
 }
@@ -25,14 +26,22 @@ impl GameRenderObject for Projectile {
     fn get_position(&self) -> &[i32; 2] {
         &self.position[0]
     }
+    fn get_previous_position(&self) -> &[i32; 2] {
+        &self.position[1]
+    }
 }
 
 impl Projectile {
-    pub fn new(position: [i32; 2], direction: LookDirection) -> Projectile {
+    pub fn new(owner_id: u32, position: [i32; 2], direction: LookDirection) -> Projectile {
         Projectile {
+            owner_id,
             position: [position, position],
             direction,
         }
+    }
+
+    pub fn get_owner_id(&self) -> u32 {
+        self.owner_id
     }
 
     pub fn set_position(&mut self, position: [i32; 2]) {

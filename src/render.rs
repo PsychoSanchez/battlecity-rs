@@ -14,6 +14,7 @@ pub struct GameRender {
 pub trait GameRenderObject {
     fn is_visible(&self) -> bool;
     fn get_position(&self) -> &[i32; 2];
+    fn get_previous_position(&self) -> &[i32; 2];
     fn get_frame(&self) -> &[f64; 4];
 }
 
@@ -45,38 +46,24 @@ impl GameRender {
         self.y_offset = (window_height - board_height) / 2.0;
     }
 
-    pub fn draw_image(
+    pub fn draw(
         &self,
         gl: &mut GlGraphics,
         c: &graphics::Context,
-        frame: &[f64; 4],
-        position: &[i32; 2],
+        obj: &dyn GameRenderObject,
+        interpolation: f64,
     ) {
-        let [x, y] = *position;
-        let target = [
-            self.x_offset + self.cell_size * x as f64,
-            self.y_offset + self.cell_size * y as f64,
-            self.cell_size,
-            self.cell_size,
-        ];
-
-        self.image.src_rect(*frame).rect(target).draw(
-            &self.texture,
-            &graphics::DrawState::default(),
-            c.transform,
-            gl,
-        );
-    }
-
-    pub fn draw(&self, gl: &mut GlGraphics, c: &graphics::Context, obj: &dyn GameRenderObject) {
         if !obj.is_visible() {
             return;
         }
 
+        let [px, py] = *obj.get_previous_position();
         let [x, y] = *obj.get_position();
+        let target_x = px as f64 + (x as f64 - px as f64) * interpolation;
+        let target_y = py as f64 + (y as f64 - py as f64) * interpolation;
         let target = [
-            self.x_offset + self.cell_size * x as f64,
-            self.y_offset + self.cell_size * y as f64,
+            self.x_offset + self.cell_size * target_x,
+            self.y_offset + self.cell_size * target_y,
             self.cell_size,
             self.cell_size,
         ];

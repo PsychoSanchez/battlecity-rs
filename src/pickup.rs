@@ -25,6 +25,10 @@ impl GameRenderObject for Pickup {
     fn get_position(&self) -> &[i32; 2] {
         &self.position
     }
+
+    fn get_previous_position(&self) -> &[i32; 2] {
+        &self.position
+    }
 }
 
 impl Pickup {

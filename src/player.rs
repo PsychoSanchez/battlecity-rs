@@ -7,11 +7,13 @@ pub struct Player {
     // [current, previous]
     position: [[i32; 2]; 2],
 
+    lives: u32,
     health: u32,
     armor: u32,
 
     kills: u32,
 
+    is_alive: bool,
     spawn: [i32; 2],
     spawn_health: u32,
     spawn_armor: u32,
@@ -41,6 +43,10 @@ impl GameRenderObject for Player {
     fn get_position(&self) -> &[i32; 2] {
         &self.position[0]
     }
+
+    fn get_previous_position(&self) -> &[i32; 2] {
+        &self.position[1]
+    }
 }
 
 impl Player {
@@ -48,14 +54,16 @@ impl Player {
         Player {
             id,
             position: [spawn, spawn],
+            lives: 3,
             health: 3,
             armor: 0,
             kills: 0,
+            is_alive: true,
             spawn,
             spawn_health: 100,
             spawn_armor: 0,
             last_shot_dt: 0.0,
-            shot_interval: 0.1,
+            shot_interval: 0.5,
             movement_controls,
             movement_controls_state: [false; 4],
             fire_control,
@@ -93,10 +101,6 @@ impl Player {
         self.last_shot_dt < self.shot_interval
     }
 
-    pub fn get_controls(&self) -> ([Key; 4], Key) {
-        (self.movement_controls, self.fire_control)
-    }
-
     pub fn get_direction(&self) -> &LookDirection {
         &self.direction
     }
@@ -116,6 +120,37 @@ impl Player {
 
     pub fn get_id(&self) -> u32 {
         self.id
+    }
+
+    // Returns bool: is killed
+    pub fn damage(&mut self) -> bool {
+        if self.armor > 0 {
+            self.armor -= 1;
+        } else {
+            self.health -= 1;
+        }
+
+        if self.health == 0 {
+            self.is_alive = false;
+        }
+
+        !self.is_alive
+    }
+
+    pub fn get_is_alive(&self) -> bool {
+        self.is_alive
+    }
+
+    pub fn inc_kill_count(&mut self) {
+        self.kills += 1;
+    }
+
+    pub fn respawn(&mut self) {
+        self.position[0] = self.spawn;
+        self.position[1] = self.spawn;
+        self.health = self.spawn_health;
+        self.armor = self.spawn_armor;
+        self.is_alive = true;
     }
 
     pub fn on_press(&mut self, key: Key) {

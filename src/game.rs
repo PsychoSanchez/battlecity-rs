@@ -8,7 +8,7 @@ use crate::{
     player::Player,
     projectile::Projectile,
     render::{GameRender, GameRenderObject},
-    wall::{self, generate_walls, Wall},
+    wall::{generate_walls, Wall, WallType},
 };
 
 fn is_in_bounds(x: i32, y: i32, column_count: u8, row_count: u8) -> bool {
@@ -69,33 +69,36 @@ impl Game {
 
     pub fn render(&mut self, args: &RenderArgs) {
         use graphics::*;
+
         self.gl.draw(args.viewport(), |c, gl| {
             //Clear the screen
             clear([0.0, 0.0, 0.0, 1.0], gl);
 
+            let lerp = f64::clamp(
+                (self.accumulated_time - self.last_update) / self.update_interval,
+                0.0,
+                1.0,
+            );
+
+            for pickup in &self.pickups {
+                self.render.draw(gl, &c, pickup, lerp);
+            }
+
             for player in &self.players {
-                self.render.draw(gl, &c, player);
+                self.render.draw(gl, &c, player, lerp);
             }
 
             self.walls
                 .iter()
-                .flat_map(|row| {
-                    row.iter()
-                        .filter(|wall| wall.variant() != wall::WallType::Empty)
-                        .collect::<Vec<_>>()
-                })
-                .for_each(|wall| self.render.draw(gl, &c, wall));
-
-            for pickup in &self.pickups {
-                self.render.draw(gl, &c, pickup);
-            }
+                .flat_map(|row| row.iter().filter(|wall| wall.variant() != WallType::Empty))
+                .for_each(|wall| self.render.draw(gl, &c, wall, lerp));
 
             for animation in &self.animations {
-                self.render.draw(gl, &c, animation);
+                self.render.draw(gl, &c, animation, lerp);
             }
 
             for bullet in &self.bullets {
-                self.render.draw(gl, &c, bullet)
+                self.render.draw(gl, &c, bullet, lerp)
             }
 
             // self.bullets
@@ -107,65 +110,157 @@ impl Game {
     pub fn update(&mut self, args: &UpdateArgs) {
         self.accumulated_time += args.dt;
 
+        self.animations.retain_mut(|animation| {
+            animation.update(args.dt);
+            !animation.is_finished()
+        });
+
+        for player in &mut self.players {
+            player.update(args);
+        }
+
         if self.accumulated_time - self.last_update < self.update_interval {
             return;
         }
 
         self.last_update = self.accumulated_time;
 
-        for player in &mut self.players {
-            player.update(args);
+        // for player in &mut self.players {
+        for i in 0..self.players.len() {
+            let player = &mut self.players[i];
+            if !player.get_is_alive() {
+                if player.get_is_fire_pressed() {
+                    player.respawn();
+                    self.animations
+                        .push(Animation::new_spawn(player.get_position()));
+                }
+
+                continue;
+            }
+            let position = player.get_position();
+            player.set_position(position);
 
             if let Some(direction) = player.get_pressed_direction() {
-                let position = player.get_position();
                 let [x, y] = direction.position_from(&position);
 
-                if is_in_bounds(x, y, self.column_count, self.row_count) {
-                    let wall = &self.walls[y as usize][x as usize];
-                    if !wall.is_solid() {
-                        player.set_position([x, y]);
-                    }
+                if is_in_bounds(x, y, self.column_count, self.row_count)
+                    && !self.walls[y as usize][x as usize].is_solid()
+                // && !self
+                //     .players
+                //     .iter()
+                //     .filter(|p| p.get_is_alive())
+                //     .filter(|p| p.get_id() != player.get_id())
+                //     .any(|p| p.get_position() == [x, y])
+                {
+                    // for j in i + 1..self.players.len() {
+                    //     let other_player = &self.players[j];
+                    //     if other_player.get_is_alive() && other_player.get_id() != player.get_id() {
+                    //         if other_player.get_position() == [x, y] {
+                    //             return;
+                    //         }
+                    //     }
+                    // }
+                    player.set_position([x, y]);
                 }
+
+                // [player]
+                //     .iter_mut()
+                //     .filter(|p| p.get_is_alive())
+                //     .filter(|_| is_in_bounds(x, y, self.column_count, self.row_count))
+                //     .filter(|_| !self.walls[y as usize][x as usize].is_solid())
+                //     .filter(|player| {
+                //         !self
+                //             .players
+                //             .iter()
+                //             .filter(|p| p.get_is_alive())
+                //             .filter(|p| p.get_id() != player.get_id())
+                //             .any(|p| p.get_position() == [x, y])
+                //     })
+                //     .for_each(|player| player.set_position([x, y]));
+
                 player.set_direction(direction);
+
+                // if is_in_bounds(x, y, self.column_count, self.row_count) {
+                //     let wall = &self.walls[y as usize][x as usize];
+
+                //     if !wall.is_solid() {
+                //         // compare against all other players
+                //         let is_colliding_with_other_players = self
+                //             .players
+                //             .iter()
+                //             .any(|p| p.get_id() != player.get_id() && p.get_position() == [x, y]);
+
+                //         if !is_colliding_with_other_players {
+                //             player.set_position([x, y]);
+                //         }
+                //     }
+                // }
+                // player.set_direction(direction);
             }
 
             if player.get_is_fire_pressed() && player.shoot() {
                 let position = player.get_position();
                 let direction = player.get_direction();
-                let bullet = Projectile::new(position, *direction);
+                let bullet = Projectile::new(player.get_id(), position, *direction);
                 self.bullets.push(bullet);
             }
         }
 
-        for bullet in &mut self.bullets {
-            // bullet.update(args);
+        self.bullets.retain_mut(|bullet| {
             let [x, y] = bullet.get_direction().position_from(&bullet.get_position());
 
             if !is_in_bounds(x, y, self.column_count, self.row_count) {
-                // self.bullets.retain(|b| b != bullet);
-                continue;
+                return false;
             }
 
             let wall = &mut self.walls[y as usize][x as usize];
             if wall.is_solid() {
                 wall.damage();
-                // self.bullets.retain(|b| b != bullet);
-                continue;
+                self.animations.push(Animation::new_explosion([x, y]));
+                return false;
             }
 
-            for player in &mut self.players {
-                if player.get_position() == [x, y] {
-                    // self.bullets.retain(|b| b != bullet);
-                    continue;
-                }
+            enum DamageState {
+                Damaged,
+                Killed,
+            }
+
+            let players_to_damage = self
+                .players
+                .iter_mut()
+                .filter(|player| player.get_is_alive() && player.get_position() == [x, y]);
+
+            // let is_player_hit = players_to_damage.any(|_| true);
+            // let is_player_hit = players_to_damage.count() > 0;
+            let mut is_player_hit = false;
+            let is_player_killed = players_to_damage
+                .map(|player| {
+                    is_player_hit = true;
+                    player.damage()
+                })
+                .take(1)
+                .any(|is_killed| is_killed);
+
+            if is_player_killed {
+                let kill_credit_player = self
+                    .players
+                    .iter_mut()
+                    .find(|p| p.get_id() == bullet.get_owner_id())
+                    .unwrap();
+
+                kill_credit_player.inc_kill_count();
+            }
+
+            // if is_player_hit {
+            if is_player_hit {
+                self.animations.push(Animation::new_explosion([x, y]));
+                return false;
             }
 
             bullet.set_position([x, y]);
-        }
 
-        // for animation in &mut self.animations {
-        //     animation.update(args.dt);
-        // }
+            true
+        });
     }
 
     pub fn process_input(&mut self, args: &ButtonArgs) {
