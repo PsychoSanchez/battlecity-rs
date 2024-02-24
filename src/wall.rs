@@ -1,4 +1,4 @@
-use crate::{BRICK_TILE, CONCRETE_TILE, EMPTY_FRAME_TILE, NET_TILE};
+use crate::{render::GameRenderObject, BRICK_TILE, CONCRETE_TILE, EMPTY_FRAME_TILE, NET_TILE};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum WallType {
@@ -11,6 +11,20 @@ pub enum WallType {
 pub struct Wall {
     variant: WallType,
     position: [i32; 2],
+}
+
+impl GameRenderObject for Wall {
+    fn is_visible(&self) -> bool {
+        self.variant != WallType::Empty
+    }
+
+    fn get_frame(&self) -> &[f64; 4] {
+        self.get_frame()
+    }
+
+    fn get_position(&self) -> &[i32; 2] {
+        &self.position
+    }
 }
 
 impl Wall {
@@ -68,10 +82,6 @@ impl Wall {
             WallType::Net => &NET_TILE,
             WallType::Empty => &EMPTY_FRAME_TILE,
         }
-    }
-
-    pub fn get_position(&self) -> &[i32; 2] {
-        &self.position
     }
 }
 

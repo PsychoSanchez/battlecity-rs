@@ -1,9 +1,25 @@
+use crate::render::GameRenderObject;
+
 pub struct Animation {
     position: [i32; 2],
     frames: Vec<[f64; 4]>,
     current_frame: usize,
     frame_duration: f64,
     frame_dt: f64,
+}
+
+impl GameRenderObject for Animation {
+    fn is_visible(&self) -> bool {
+        true
+    }
+
+    fn get_frame(&self) -> &[f64; 4] {
+        &self.frames[self.current_frame]
+    }
+
+    fn get_position(&self) -> &[i32; 2] {
+        &self.position
+    }
 }
 
 impl Animation {
@@ -24,13 +40,5 @@ impl Animation {
             self.frame_dt = 0.0;
             self.current_frame = self.current_frame + 1 % self.frames.len();
         }
-    }
-
-    pub fn get_frame(&self) -> &[f64; 4] {
-        &self.frames[self.current_frame]
-    }
-
-    pub fn get_position(&self) -> &[i32; 2] {
-        &self.position
     }
 }

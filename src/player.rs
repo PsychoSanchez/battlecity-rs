@@ -1,6 +1,6 @@
 use piston::{input::Key, UpdateArgs};
 
-use crate::{transform::LookDirection, TANK_1_TILES};
+use crate::{render::GameRenderObject, transform::LookDirection, TANK_1_TILES};
 
 pub struct Player {
     id: u32,
@@ -27,6 +27,20 @@ pub struct Player {
     direction: LookDirection,
 
     tiles: [[f64; 4]; 8],
+}
+
+impl GameRenderObject for Player {
+    fn is_visible(&self) -> bool {
+        self.health > 0
+    }
+
+    fn get_frame(&self) -> &[f64; 4] {
+        self.get_frame()
+    }
+
+    fn get_position(&self) -> &[i32; 2] {
+        &self.position[0]
+    }
 }
 
 impl Player {
