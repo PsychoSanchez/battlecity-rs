@@ -30,10 +30,10 @@ cargo run --release
 
 ### Controls
 
-- Player 1: W, A, S, D to move, X to shoot
-- Player 2: Arrow keys to move, Space to shoot
-- Player 3: I, J, K, L to move, M to shoot
-- Player 4: T, F, G, H to move, B to shoot
+- Player 1: `↑`, `←`, `↓`, `→` to move, `Spacebar` to shoot
+- Player 2: `W`, `A`, `S`, `D` to move, `C` to shoot
+- Player 3: `T`, `F`, `G`, `H` to move, `B` to shoot
+- Player 4: `I`, `J`, `K`, `L` to move, `M` to shoot
 
 - Press `R` to restart the game
 
