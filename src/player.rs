@@ -61,20 +61,19 @@ impl Player {
         fire_control: Key,
     ) -> Player {
         let max_health = 3;
-        let max_armor = 0;
         Player {
             id,
             position: [spawn, spawn],
             lives: 3,
             health: max_health,
-            armor: max_armor,
+            armor: 0,
             max_health,
-            max_armor,
+            max_armor: 3,
             kills: 0,
             is_alive: true,
             spawn,
             spawn_health: max_health,
-            spawn_armor: max_armor,
+            spawn_armor: 0,
             last_shot_dt: 0.0,
             shot_interval: 0.5,
             movement_controls,
