@@ -26,12 +26,12 @@ fn main() {
     // Change this to OpenGL::V2_1 if not working.
     let opengl = OpenGL::V3_2;
 
-    let column_count = 30;
-    let row_count = 20;
-    let default_cell_size = 32.0;
+    let column_count = COLUMN_COUNT;
+    let row_count = ROW_COUNT;
+    let default_cell_size = DEFAULT_CELL_SIZE;
     let window_size = [
         column_count as f64 * default_cell_size,
-        row_count as f64 * default_cell_size,
+        row_count as f64 * default_cell_size + SCOREBOARD_HEIGHT * 2.0,
     ];
 
     // Create a Glutin window.

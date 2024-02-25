@@ -1,6 +1,9 @@
 use piston::input::Key;
 
-use crate::{render::GameRenderObject, transform::LookDirection, TANK_1_TILES};
+use crate::{
+    render::GameRenderObject, transform::LookDirection, PLAYER_LIVES, PLAYER_MAX_ARMOR,
+    PLAYER_MAX_HEALTH, PLAYER_SHOT_INTERVAL, PLAYER_SPAWN_ARMOR, PLAYER_SPAWN_HEALTH, TANK_1_TILES,
+};
 
 pub struct Player {
     id: u32,
@@ -60,22 +63,21 @@ impl Player {
         movement_controls: [Key; 4],
         fire_control: Key,
     ) -> Player {
-        let max_health = 3;
         Player {
             id,
             position: [spawn, spawn],
-            lives: 3,
-            health: max_health,
+            lives: PLAYER_LIVES,
+            health: PLAYER_SPAWN_HEALTH,
             armor: 0,
-            max_health,
-            max_armor: 3,
+            max_health: PLAYER_MAX_HEALTH,
+            max_armor: PLAYER_MAX_ARMOR,
             kills: 0,
             is_alive: true,
             spawn,
-            spawn_health: max_health,
-            spawn_armor: 0,
+            spawn_health: PLAYER_SPAWN_HEALTH,
+            spawn_armor: PLAYER_SPAWN_ARMOR,
             last_shot_dt: 0.0,
-            shot_interval: 0.5,
+            shot_interval: PLAYER_SHOT_INTERVAL,
             movement_controls,
             movement_controls_state: [false; 4],
             fire_control,
@@ -177,9 +179,7 @@ impl Player {
     }
 
     pub fn reset(&mut self) {
-        self.lives = 3;
-        self.health = 3;
-        self.armor = 0;
+        self.lives = PLAYER_LIVES;
         self.kills = 0;
 
         self.respawn();

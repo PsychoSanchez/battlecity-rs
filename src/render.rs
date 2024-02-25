@@ -3,6 +3,8 @@ use std::path::Path;
 use graphics::{DrawState, Image, Text};
 use opengl_graphics::{Filter, GlGraphics, GlyphCache, Texture, TextureSettings};
 
+use crate::{GAME_OVER_TEXTURE_PATH, SCOREBOARD_HEIGHT, TANKS_TEXTURE_PATH};
+
 pub trait GameRenderObject {
     fn is_visible(&self) -> bool;
     fn get_position(&self) -> &[i32; 2];
@@ -28,7 +30,7 @@ fn load_game_textures() -> Texture {
         .compress(false)
         .filter(Filter::Nearest);
 
-    let texture = Texture::from_path(Path::new("resources/tanks.png"), &settings).unwrap();
+    let texture = Texture::from_path(Path::new(TANKS_TEXTURE_PATH), &settings).unwrap();
 
     texture
 }
@@ -38,7 +40,7 @@ fn load_game_over_texture() -> Texture {
         .compress(false)
         .filter(Filter::Nearest);
 
-    let texture = Texture::from_path(Path::new("resources/gameover.png"), &settings).unwrap();
+    let texture = Texture::from_path(Path::new(GAME_OVER_TEXTURE_PATH), &settings).unwrap();
 
     texture
 }
@@ -54,7 +56,7 @@ impl GameRender {
             cell_size: 0.0,
             x_offset: 0.0,
             y_offset: 0.0,
-            scoreboard_height: 16.0,
+            scoreboard_height: SCOREBOARD_HEIGHT,
             draw_state: DrawState::default(),
             scoreboard: Scoreboard::new(),
         }

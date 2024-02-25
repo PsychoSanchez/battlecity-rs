@@ -35,56 +35,58 @@ pub struct Game {
 
 impl Game {
     pub fn new(gl: GlGraphics, column_count: u8, row_count: u8) -> Game {
+        let players = vec![
+            Player::new(
+                0,
+                [0, 0],
+                LookDirection::Down,
+                [Key::Up, Key::Right, Key::Down, Key::Left],
+                Key::Space,
+            )
+            .set_tiles(TANK_1_TILES),
+            Player::new(
+                1,
+                [column_count as i32 - 1, row_count as i32 - 1],
+                LookDirection::Up,
+                [Key::W, Key::D, Key::S, Key::A],
+                Key::X,
+            )
+            .set_tiles(TANK_3_TILES),
+            Player::new(
+                2,
+                [0, row_count as i32 - 1],
+                LookDirection::Up,
+                [Key::T, Key::H, Key::G, Key::F],
+                Key::B,
+            )
+            .set_tiles(TANK_2_TILES),
+            Player::new(
+                3,
+                [column_count as i32 - 1, 0],
+                LookDirection::Down,
+                [Key::I, Key::L, Key::K, Key::J],
+                Key::M,
+            )
+            .set_tiles(TANK_4_TILES),
+        ];
+
         Game {
             gl,
             column_count,
             row_count,
-            players: vec![
-                Player::new(
-                    0,
-                    [0, 0],
-                    LookDirection::Down,
-                    [Key::Up, Key::Right, Key::Down, Key::Left],
-                    Key::Space,
-                )
-                .set_tiles(TANK_1_TILES),
-                Player::new(
-                    1,
-                    [column_count as i32 - 1, row_count as i32 - 1],
-                    LookDirection::Up,
-                    [Key::W, Key::D, Key::S, Key::A],
-                    Key::X,
-                )
-                .set_tiles(TANK_3_TILES),
-                Player::new(
-                    2,
-                    [0, row_count as i32 - 1],
-                    LookDirection::Up,
-                    [Key::T, Key::H, Key::G, Key::F],
-                    Key::B,
-                )
-                .set_tiles(TANK_2_TILES),
-                Player::new(
-                    3,
-                    [column_count as i32 - 1, 0],
-                    LookDirection::Down,
-                    [Key::I, Key::L, Key::K, Key::J],
-                    Key::M,
-                )
-                .set_tiles(TANK_4_TILES),
-            ],
+            players,
             walls: generate_walls(column_count, row_count),
             pickup_spawn_systems: [
-                PickupSpawnSystem::new(PickupType::Armor, 25.0),
-                PickupSpawnSystem::new(PickupType::Health, 10.0),
+                PickupSpawnSystem::new(PickupType::Armor, ARMOR_SPAWN_TIME),
+                PickupSpawnSystem::new(PickupType::Health, HEALTH_SPAWN_TIME),
             ],
-            max_pickups: 5,
+            max_pickups: MAX_SPAWNED_PICKUPS,
             pickups: vec![],
             bullets: vec![],
             animations: vec![],
             last_update: 0.0,
             accumulated_time: 0.0,
-            update_interval: 0.1,
+            update_interval: GAME_TICK_INTERVAL,
             render: GameRender::new(column_count, row_count),
         }
     }
@@ -398,10 +400,8 @@ impl Game {
             }
         }
 
-        if let Button::Keyboard(btn) = args.button {
-            if btn == Key::R && is_pressed {
-                self.reset();
-            }
+        if Button::Keyboard(Key::R) == args.button && is_pressed {
+            self.reset();
         }
     }
 }

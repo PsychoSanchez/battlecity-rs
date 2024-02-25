@@ -1,3 +1,23 @@
+pub const COLUMN_COUNT: u8 = 30;
+pub const ROW_COUNT: u8 = 20;
+pub const DEFAULT_CELL_SIZE: f64 = 32.0; // Rendered tile size
+pub const SCOREBOARD_HEIGHT: f64 = 16.0;
+
+pub const GAME_TICK_INTERVAL: f64 = 0.1;
+
+pub const PLAYER_SHOT_INTERVAL: f64 = 0.5;
+pub const PLAYER_MAX_HEALTH: u32 = 3;
+pub const PLAYER_SPAWN_HEALTH: u32 = 3;
+pub const PLAYER_MAX_ARMOR: u32 = 3;
+pub const PLAYER_LIVES: u32 = 3;
+pub const PLAYER_SPAWN_ARMOR: u32 = 0;
+
+pub const MAX_SPAWNED_PICKUPS: usize = 5;
+pub const ARMOR_SPAWN_TIME: f64 = 25.0;
+pub const HEALTH_SPAWN_TIME: f64 = 10.0;
+
+pub const GAME_OVER_TEXTURE_PATH: &str = "resources/gameover.png";
+pub const TANKS_TEXTURE_PATH: &str = "resources/tanks.png";
 pub const TILE_SIZE: f64 = 16.0;
 pub const BRICK_TILE: [f64; 4] = [
     0.0 * TILE_SIZE,
