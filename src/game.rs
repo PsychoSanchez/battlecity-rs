@@ -100,10 +100,6 @@ impl Game {
             for bullet in &self.bullets {
                 self.render.draw(gl, &c, bullet, lerp)
             }
-
-            // self.bullets
-            //     .iter()
-            //     .for_each(|bullet| self.render.draw(gl, &c, bullet));
         });
     }
 
@@ -125,106 +121,84 @@ impl Game {
 
         self.last_update = self.accumulated_time;
 
-        // for player in &mut self.players {
         for i in 0..self.players.len() {
-            let player = &mut self.players[i];
-            if !player.get_is_alive() {
-                if player.get_is_fire_pressed() {
-                    player.respawn();
-                    self.animations
-                        .push(Animation::new_spawn(player.get_position()));
-                }
-
+            if !self.players[i].get_is_alive() {
                 continue;
             }
-            let position = player.get_position();
-            player.set_position(position);
 
-            if let Some(direction) = player.get_pressed_direction() {
+            if let Some(direction) = self.players[i].get_pressed_direction() {
+                let position = {
+                    let player = &mut self.players[i];
+                    let position = player.get_position();
+                    player.set_position(position);
+
+                    position
+                };
+
                 let [x, y] = direction.position_from(&position);
 
-                if is_in_bounds(x, y, self.column_count, self.row_count)
+                let is_intersecting = is_in_bounds(x, y, self.column_count, self.row_count)
                     && !self.walls[y as usize][x as usize].is_solid()
-                // && !self
-                //     .players
-                //     .iter()
-                //     .filter(|p| p.get_is_alive())
-                //     .filter(|p| p.get_id() != player.get_id())
-                //     .any(|p| p.get_position() == [x, y])
-                {
-                    // for j in i + 1..self.players.len() {
-                    //     let other_player = &self.players[j];
-                    //     if other_player.get_is_alive() && other_player.get_id() != player.get_id() {
-                    //         if other_player.get_position() == [x, y] {
-                    //             return;
-                    //         }
-                    //     }
-                    // }
-                    player.set_position([x, y]);
+                    && !self.players[i..]
+                        .iter()
+                        .skip(1)
+                        .filter(|p| p.get_is_alive())
+                        .any(|p| p.get_position() == [x, y]);
+
+                if is_intersecting {
+                    self.players[i].set_position([x, y]);
                 }
 
-                // [player]
-                //     .iter_mut()
-                //     .filter(|p| p.get_is_alive())
-                //     .filter(|_| is_in_bounds(x, y, self.column_count, self.row_count))
-                //     .filter(|_| !self.walls[y as usize][x as usize].is_solid())
-                //     .filter(|player| {
-                //         !self
-                //             .players
-                //             .iter()
-                //             .filter(|p| p.get_is_alive())
-                //             .filter(|p| p.get_id() != player.get_id())
-                //             .any(|p| p.get_position() == [x, y])
-                //     })
-                //     .for_each(|player| player.set_position([x, y]));
-
-                player.set_direction(direction);
-
-                // if is_in_bounds(x, y, self.column_count, self.row_count) {
-                //     let wall = &self.walls[y as usize][x as usize];
-
-                //     if !wall.is_solid() {
-                //         // compare against all other players
-                //         let is_colliding_with_other_players = self
-                //             .players
-                //             .iter()
-                //             .any(|p| p.get_id() != player.get_id() && p.get_position() == [x, y]);
-
-                //         if !is_colliding_with_other_players {
-                //             player.set_position([x, y]);
-                //         }
-                //     }
-                // }
-                // player.set_direction(direction);
+                self.players[i].set_direction(direction);
             }
 
-            if player.get_is_fire_pressed() && player.shoot() {
-                let position = player.get_position();
-                let direction = player.get_direction();
-                let bullet = Projectile::new(player.get_id(), position, *direction);
+            if self.players[i].get_is_fire_pressed() && self.players[i].shoot() {
+                let position = self.players[i].get_position();
+                let direction = self.players[i].get_direction();
+                let bullet = Projectile::new(self.players[i].get_id(), position, *direction);
                 self.bullets.push(bullet);
             }
         }
 
-        self.bullets.retain_mut(|bullet| {
-            let [x, y] = bullet.get_direction().position_from(&bullet.get_position());
+        // Respawn dead players
+        self.players
+            .iter_mut()
+            .filter(|player| !player.get_is_alive() && player.get_is_fire_pressed())
+            .for_each(|player| {
+                player.respawn();
+                self.animations
+                    .push(Animation::new_spawn(player.get_position()));
+            });
 
+        self.update_bullets();
+    }
+
+    fn update_bullets(&mut self) {
+        let bullets_length = self.bullets.len();
+        let mut bullets_to_keep = vec![true; bullets_length];
+
+        for i in 0..bullets_length {
+            let bullet = &self.bullets[i];
+            let position = bullet.get_position();
+            let new_position = bullet.get_direction().position_from(&position);
+            let [x, y] = new_position;
+
+            // Compare against boundaries
             if !is_in_bounds(x, y, self.column_count, self.row_count) {
-                return false;
+                bullets_to_keep[i] = false;
+                continue;
             }
 
+            // Compare against walls
             let wall = &mut self.walls[y as usize][x as usize];
             if wall.is_solid() {
                 wall.damage();
                 self.animations.push(Animation::new_explosion([x, y]));
-                return false;
+                bullets_to_keep[i] = false;
+                continue;
             }
 
-            enum DamageState {
-                Damaged,
-                Killed,
-            }
-
+            // Compare against players
             let players_to_damage = self
                 .players
                 .iter_mut()
@@ -251,15 +225,33 @@ impl Game {
                 kill_credit_player.inc_kill_count();
             }
 
-            // if is_player_hit {
             if is_player_hit {
+                bullets_to_keep[i] = false;
+
                 self.animations.push(Animation::new_explosion([x, y]));
-                return false;
+                continue;
             }
 
-            bullet.set_position([x, y]);
+            // Compare against other bullets
+            self.bullets[i..]
+                .iter()
+                .map(|bullet| bullet.get_direction().position_from(&bullet.get_position()))
+                .enumerate()
+                .filter(|(_, position_b)| *position == *position_b || new_position == *position_b)
+                .for_each(|(right_index, _)| {
+                    bullets_to_keep[i - 1] = false;
+                    bullets_to_keep[i + right_index] = false;
 
-            true
+                    self.animations.push(Animation::new_explosion(new_position));
+                });
+        }
+
+        let mut iter = bullets_to_keep.iter();
+        // Remove destroyed bullets
+        self.bullets.retain(|_| *iter.next().unwrap());
+        // Update bullets positions
+        self.bullets.iter_mut().for_each(|bullet| {
+            bullet.set_position(bullet.get_direction().position_from(&bullet.get_position()))
         });
     }
 
