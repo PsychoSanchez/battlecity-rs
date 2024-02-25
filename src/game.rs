@@ -126,15 +126,13 @@ impl Game {
                 continue;
             }
 
+            // Set player position to old position even if it's not moved to update animation state
+            let player = &mut self.players[i];
+            let position = player.get_position();
+            player.set_position(position);
+
             if let Some(direction) = self.players[i].get_pressed_direction() {
-                let position = {
-                    let player = &mut self.players[i];
-                    let position = player.get_position();
-                    player.set_position(position);
-
-                    position
-                };
-
+                let position = self.players[i].get_position();
                 let [x, y] = direction.position_from(&position);
 
                 let is_intersecting = is_in_bounds(x, y, self.column_count, self.row_count)
@@ -235,11 +233,12 @@ impl Game {
             // Compare against other bullets
             self.bullets[i..]
                 .iter()
+                .skip(1)
                 .map(|bullet| bullet.get_direction().position_from(&bullet.get_position()))
                 .enumerate()
                 .filter(|(_, position_b)| *position == *position_b || new_position == *position_b)
                 .for_each(|(right_index, _)| {
-                    bullets_to_keep[i - 1] = false;
+                    bullets_to_keep[i] = false;
                     bullets_to_keep[i + right_index] = false;
 
                     self.animations.push(Animation::new_explosion(new_position));
