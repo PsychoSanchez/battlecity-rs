@@ -60,19 +60,21 @@ impl Player {
         movement_controls: [Key; 4],
         fire_control: Key,
     ) -> Player {
+        let max_health = 3;
+        let max_armor = 0;
         Player {
             id,
             position: [spawn, spawn],
             lives: 3,
-            health: 3,
-            armor: 0,
-            max_health: 3,
-            max_armor: 3,
+            health: max_health,
+            armor: max_armor,
+            max_health,
+            max_armor,
             kills: 0,
             is_alive: true,
             spawn,
-            spawn_health: 100,
-            spawn_armor: 0,
+            spawn_health: max_health,
+            spawn_armor: max_armor,
             last_shot_dt: 0.0,
             shot_interval: 0.5,
             movement_controls,
@@ -173,6 +175,15 @@ impl Player {
         self.armor = self.spawn_armor;
         self.direction = self.spawn_direction;
         self.is_alive = true;
+    }
+
+    pub fn reset(&mut self) {
+        self.lives = 3;
+        self.health = 3;
+        self.armor = 0;
+        self.kills = 0;
+
+        self.respawn();
     }
 
     pub fn on_press(&mut self, key: Key) {

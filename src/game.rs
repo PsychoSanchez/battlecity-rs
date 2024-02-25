@@ -1,4 +1,4 @@
-use opengl_graphics::{GlGraphics, Texture};
+use opengl_graphics::GlGraphics;
 use piston::{Button, ButtonArgs, Key, RenderArgs, UpdateArgs};
 
 use crate::{
@@ -7,7 +7,7 @@ use crate::{
     pickup::{Pickup, PickupSpawnSystem, PickupType},
     player::Player,
     projectile::Projectile,
-    render::{GameRender, GameRenderObject},
+    render::{GameRender, GameRenderObject, ScoreboardPlayerState},
     transform::LookDirection,
     wall::{generate_walls, Wall, WallType},
 };
@@ -34,7 +34,7 @@ pub struct Game {
 }
 
 impl Game {
-    pub fn new(gl: GlGraphics, texture: Texture, column_count: u8, row_count: u8) -> Game {
+    pub fn new(gl: GlGraphics, column_count: u8, row_count: u8) -> Game {
         Game {
             gl,
             column_count,
@@ -85,8 +85,38 @@ impl Game {
             last_update: 0.0,
             accumulated_time: 0.0,
             update_interval: 0.1,
-            render: GameRender::new(column_count, row_count, texture),
+            render: GameRender::new(column_count, row_count),
         }
+    }
+
+    pub fn reset(&mut self) {
+        self.walls = generate_walls(self.column_count, self.row_count);
+        self.pickups.clear();
+        self.bullets.clear();
+        self.animations.clear();
+        self.players.iter_mut().for_each(|player| player.reset());
+        self.pickup_spawn_systems
+            .iter_mut()
+            .for_each(|system| system.reset_spawn_timer());
+        self.accumulated_time = 0.0;
+        self.last_update = 0.0;
+
+        self.render.scoreboard.set_score(
+            self.players
+                .iter()
+                .map(|p| ScoreboardPlayerState {
+                    kills: p.get_kills(),
+                    lives: p.get_lives(),
+                })
+                .collect::<_>(),
+        );
+    }
+
+    fn is_game_over(&self) -> bool {
+        let alive_players_count = self.players.iter().filter(|p| p.get_is_alive()).count();
+        let players_can_respawn = self.players.iter().filter(|p| p.can_respawn()).count();
+
+        alive_players_count <= 1 && players_can_respawn <= 1
     }
 
     pub fn set_window_size(&mut self, window_size: [f64; 2]) {
@@ -95,10 +125,16 @@ impl Game {
 
     pub fn render(&mut self, args: &RenderArgs) {
         use graphics::*;
-
+        let is_game_over = self.is_game_over();
         self.gl.draw(args.viewport(), |c, gl| {
             //Clear the screen
             clear([0.0, 0.0, 0.0, 1.0], gl);
+            if is_game_over {
+                self.render.draw_game_over(gl, &c);
+                return;
+            }
+
+            self.render.scoreboard.draw(gl, &c);
 
             let lerp = f64::clamp(
                 (self.accumulated_time - self.last_update) / self.update_interval,
@@ -201,16 +237,11 @@ impl Game {
 
                 let is_intersecting = !is_in_bounds(x, y, self.column_count, self.row_count)
                     || self.walls[y as usize][x as usize].is_solid()
-                    || self.players[i..]
+                    || self.players[..]
                         .iter()
-                        .skip(1)
-                        .filter(|p| p.get_is_alive())
-                        .any(|p| {
-                            let p_position = p.get_position();
-
-                            p_position == new_position
-                                || p_position == p.get_direction().position_from(&position)
-                        });
+                        .enumerate()
+                        .filter(|(index, p)| *index != i && p.get_is_alive())
+                        .any(|(_, p)| p.get_position() == new_position);
 
                 if !is_intersecting {
                     self.players[i].set_position([x, y]);
@@ -230,7 +261,9 @@ impl Game {
         // Respawn dead players
         self.players
             .iter_mut()
-            .filter(|player| !player.get_is_alive() && player.get_is_fire_pressed())
+            .filter(|player| {
+                !player.get_is_alive() && player.get_is_fire_pressed() && player.can_respawn()
+            })
             .for_each(|player| {
                 player.respawn();
                 self.animations
@@ -253,6 +286,17 @@ impl Game {
         });
 
         self.update_bullets();
+
+        // Update scoreboard
+        self.render.scoreboard.set_score(
+            self.players
+                .iter()
+                .map(|p| ScoreboardPlayerState {
+                    kills: p.get_kills(),
+                    lives: p.get_lives(),
+                })
+                .collect::<_>(),
+        );
     }
 
     fn update_bullets(&mut self) {
@@ -284,7 +328,7 @@ impl Game {
             let players_to_damage = self
                 .players
                 .iter_mut()
-                .filter(|player| player.get_is_alive() && player.get_position() == [x, y]);
+                .filter(|player| player.get_is_alive() && (player.get_position() == [x, y]));
 
             // let is_player_hit = players_to_damage.any(|_| true);
             // let is_player_hit = players_to_damage.count() > 0;
@@ -313,17 +357,21 @@ impl Game {
                 self.animations.push(Animation::new_explosion([x, y]));
                 continue;
             }
-
             // Compare against other bullets
+            // Start iterating from i and skip 1 element to skip overflow check
             self.bullets[i..]
                 .iter()
-                .skip(1)
-                .map(|bullet| bullet.get_direction().position_from(&bullet.get_position()))
                 .enumerate()
-                .filter(|(_, position_b)| *position == *position_b || new_position == *position_b)
+                .skip(1)
+                .filter(|(_, bullet)| {
+                    let position_b = bullet.get_position();
+
+                    new_position == *position_b || *position == *position_b
+                })
                 .for_each(|(right_index, _)| {
+                    let right_index = right_index + i;
                     bullets_to_keep[i] = false;
-                    bullets_to_keep[i + right_index] = false;
+                    bullets_to_keep[right_index] = false;
 
                     self.animations.push(Animation::new_explosion(new_position));
                 });
@@ -347,6 +395,12 @@ impl Game {
                 } else {
                     player.on_release(btn);
                 }
+            }
+        }
+
+        if let Button::Keyboard(btn) = args.button {
+            if btn == Key::R && is_pressed {
+                self.reset();
             }
         }
     }

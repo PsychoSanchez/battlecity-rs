@@ -3,8 +3,6 @@ extern crate graphics;
 extern crate opengl_graphics;
 extern crate piston;
 
-use std::path::Path;
-
 mod animation;
 mod constants;
 mod game;
@@ -18,18 +16,11 @@ mod wall;
 use constants::*;
 use game::Game;
 use glutin_window::GlutinWindow as Window;
-use opengl_graphics::{GlGraphics, OpenGL, Texture, TextureSettings};
+use opengl_graphics::{GlGraphics, OpenGL};
 use piston::event_loop::{EventSettings, Events};
 use piston::input::{RenderEvent, UpdateEvent};
 use piston::window::WindowSettings;
 use piston::{ButtonEvent, ResizeEvent};
-
-fn load_game_textures() -> Texture {
-    let settings = TextureSettings::new();
-    let texture = Texture::from_path(Path::new("resources/tanks.png"), &settings).unwrap();
-
-    texture
-}
 
 fn main() {
     // Change this to OpenGL::V2_1 if not working.
@@ -51,9 +42,7 @@ fn main() {
         .build()
         .unwrap();
 
-    let texture = load_game_textures();
-
-    let mut game = Game::new(GlGraphics::new(opengl), texture, column_count, row_count);
+    let mut game = Game::new(GlGraphics::new(opengl), column_count, row_count);
     game.set_window_size(window_size);
 
     let mut events = Events::new(EventSettings::new());
