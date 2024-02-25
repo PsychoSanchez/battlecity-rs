@@ -1,4 +1,4 @@
-use piston::{input::Key, UpdateArgs};
+use piston::input::Key;
 
 use crate::{render::GameRenderObject, transform::LookDirection, TANK_1_TILES};
 
@@ -10,6 +10,8 @@ pub struct Player {
     lives: u32,
     health: u32,
     armor: u32,
+    max_health: u32,
+    max_armor: u32,
 
     kills: u32,
 
@@ -27,6 +29,7 @@ pub struct Player {
     fire_control_state: bool,
 
     direction: LookDirection,
+    spawn_direction: LookDirection,
 
     tiles: [[f64; 4]; 8],
 }
@@ -50,13 +53,21 @@ impl GameRenderObject for Player {
 }
 
 impl Player {
-    pub fn new(id: u32, spawn: [i32; 2], movement_controls: [Key; 4], fire_control: Key) -> Player {
+    pub fn new(
+        id: u32,
+        spawn: [i32; 2],
+        spawn_direction: LookDirection,
+        movement_controls: [Key; 4],
+        fire_control: Key,
+    ) -> Player {
         Player {
             id,
             position: [spawn, spawn],
             lives: 3,
             health: 3,
             armor: 0,
+            max_health: 3,
+            max_armor: 3,
             kills: 0,
             is_alive: true,
             spawn,
@@ -68,7 +79,8 @@ impl Player {
             movement_controls_state: [false; 4],
             fire_control,
             fire_control_state: false,
-            direction: LookDirection::Up,
+            direction: spawn_direction,
+            spawn_direction,
             tiles: TANK_1_TILES,
         }
     }
@@ -79,12 +91,8 @@ impl Player {
         self
     }
 
-    pub fn get_tiles(&self) -> &[[f64; 4]; 8] {
-        &self.tiles
-    }
-
-    pub fn update(&mut self, args: &UpdateArgs) {
-        self.last_shot_dt += args.dt;
+    pub fn on_frame(&mut self, dt: f64) {
+        self.last_shot_dt += dt;
     }
 
     pub fn shoot(&mut self) -> bool {
@@ -132,17 +140,30 @@ impl Player {
 
         if self.health == 0 {
             self.is_alive = false;
+            self.lives -= 1;
         }
 
         !self.is_alive
+    }
+
+    pub fn get_kills(&self) -> u32 {
+        self.kills
+    }
+
+    pub fn inc_kill_count(&mut self) {
+        self.kills += 1;
     }
 
     pub fn get_is_alive(&self) -> bool {
         self.is_alive
     }
 
-    pub fn inc_kill_count(&mut self) {
-        self.kills += 1;
+    pub fn get_lives(&self) -> u32 {
+        self.lives
+    }
+
+    pub fn can_respawn(&self) -> bool {
+        self.lives > 0
     }
 
     pub fn respawn(&mut self) {
@@ -150,6 +171,7 @@ impl Player {
         self.position[1] = self.spawn;
         self.health = self.spawn_health;
         self.armor = self.spawn_armor;
+        self.direction = self.spawn_direction;
         self.is_alive = true;
     }
 
@@ -205,5 +227,23 @@ impl Player {
             LookDirection::Down => &self.tiles[2 + shift],
             LookDirection::Left => &self.tiles[3 + shift],
         }
+    }
+
+    pub(crate) fn add_armor(&mut self) -> bool {
+        // let prev_armor = self.armor;
+        self.armor = std::cmp::min(self.max_armor, self.armor + 1);
+
+        // self.armor > prev_armor
+        // always steal pickups like in the original game
+        true
+    }
+
+    pub(crate) fn add_health(&mut self) -> bool {
+        // let prev_health = self.health;
+        self.health = std::cmp::min(self.max_health, self.health + 1);
+
+        // self.health > prev_health
+        // always steal pickups like in the original game
+        true
     }
 }

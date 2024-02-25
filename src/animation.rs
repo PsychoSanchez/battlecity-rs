@@ -45,7 +45,7 @@ impl Animation {
         Animation::new(position, SPAWN_FRAMES.to_vec(), 0.1)
     }
 
-    pub fn update(&mut self, dt: f64) {
+    pub fn on_frame(&mut self, dt: f64) {
         self.frame_dt += dt;
 
         if self.frame_dt >= self.frame_duration {

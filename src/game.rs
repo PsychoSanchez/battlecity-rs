@@ -4,10 +4,11 @@ use piston::{Button, ButtonArgs, Key, RenderArgs, UpdateArgs};
 use crate::{
     animation::Animation,
     constants::*,
-    pickup::Pickup,
+    pickup::{Pickup, PickupSpawnSystem, PickupType},
     player::Player,
     projectile::Projectile,
     render::{GameRender, GameRenderObject},
+    transform::LookDirection,
     wall::{generate_walls, Wall, WallType},
 };
 
@@ -22,6 +23,8 @@ pub struct Game {
     players: Vec<Player>,
     walls: Vec<Vec<Wall>>,
     pickups: Vec<Pickup>,
+    pickup_spawn_systems: [PickupSpawnSystem; 2],
+    max_pickups: usize,
     bullets: Vec<Projectile>,
     animations: Vec<Animation>,
     accumulated_time: f64,
@@ -40,6 +43,7 @@ impl Game {
                 Player::new(
                     0,
                     [0, 0],
+                    LookDirection::Down,
                     [Key::Up, Key::Right, Key::Down, Key::Left],
                     Key::Space,
                 )
@@ -47,12 +51,34 @@ impl Game {
                 Player::new(
                     1,
                     [column_count as i32 - 1, row_count as i32 - 1],
+                    LookDirection::Up,
                     [Key::W, Key::D, Key::S, Key::A],
                     Key::X,
                 )
+                .set_tiles(TANK_3_TILES),
+                Player::new(
+                    2,
+                    [0, row_count as i32 - 1],
+                    LookDirection::Up,
+                    [Key::T, Key::H, Key::G, Key::F],
+                    Key::B,
+                )
                 .set_tiles(TANK_2_TILES),
+                Player::new(
+                    3,
+                    [column_count as i32 - 1, 0],
+                    LookDirection::Down,
+                    [Key::I, Key::L, Key::K, Key::J],
+                    Key::M,
+                )
+                .set_tiles(TANK_4_TILES),
             ],
             walls: generate_walls(column_count, row_count),
+            pickup_spawn_systems: [
+                PickupSpawnSystem::new(PickupType::Armor, 25.0),
+                PickupSpawnSystem::new(PickupType::Health, 10.0),
+            ],
+            max_pickups: 5,
             pickups: vec![],
             bullets: vec![],
             animations: vec![],
@@ -104,17 +130,54 @@ impl Game {
     }
 
     pub fn update(&mut self, args: &UpdateArgs) {
+        // Frame tick logic
         self.accumulated_time += args.dt;
 
         self.animations.retain_mut(|animation| {
-            animation.update(args.dt);
+            animation.on_frame(args.dt);
             !animation.is_finished()
         });
 
         for player in &mut self.players {
-            player.update(args);
+            player.on_frame(args.dt);
         }
 
+        for system in &mut self.pickup_spawn_systems {
+            system.on_frame(args.dt);
+
+            if self.pickups.len() >= self.max_pickups {
+                continue;
+            }
+
+            if let Some(mut pickup) = system.get_pickup_to_spawn() {
+                let empty_positions = self
+                    .walls
+                    .iter()
+                    .enumerate()
+                    .flat_map(|(y, row)| {
+                        row.iter().enumerate().filter_map(move |(x, wall)| {
+                            if wall.variant() == WallType::Empty {
+                                Some([x as i32, y as i32])
+                            } else {
+                                None
+                            }
+                        })
+                    })
+                    .collect::<Vec<[i32; 2]>>();
+
+                let spawn_position = empty_positions
+                    .get(rand::random::<usize>() % empty_positions.len())
+                    .unwrap();
+
+                pickup.set_position(*spawn_position);
+
+                self.pickups.push(pickup);
+
+                system.reset_spawn_timer();
+            }
+        }
+
+        // Game tick logic
         if self.accumulated_time - self.last_update < self.update_interval {
             return;
         }
@@ -133,17 +196,23 @@ impl Game {
 
             if let Some(direction) = self.players[i].get_pressed_direction() {
                 let position = self.players[i].get_position();
-                let [x, y] = direction.position_from(&position);
+                let new_position = direction.position_from(&position);
+                let [x, y] = new_position;
 
-                let is_intersecting = is_in_bounds(x, y, self.column_count, self.row_count)
-                    && !self.walls[y as usize][x as usize].is_solid()
-                    && !self.players[i..]
+                let is_intersecting = !is_in_bounds(x, y, self.column_count, self.row_count)
+                    || self.walls[y as usize][x as usize].is_solid()
+                    || self.players[i..]
                         .iter()
                         .skip(1)
                         .filter(|p| p.get_is_alive())
-                        .any(|p| p.get_position() == [x, y]);
+                        .any(|p| {
+                            let p_position = p.get_position();
 
-                if is_intersecting {
+                            p_position == new_position
+                                || p_position == p.get_direction().position_from(&position)
+                        });
+
+                if !is_intersecting {
                     self.players[i].set_position([x, y]);
                 }
 
@@ -167,6 +236,21 @@ impl Game {
                 self.animations
                     .push(Animation::new_spawn(player.get_position()));
             });
+
+        self.pickups.retain(|pickup| {
+            let position = pickup.get_position();
+            let mut players_to_pickup = self
+                .players
+                .iter_mut()
+                .filter(|player| player.get_is_alive() && player.get_position() == *position);
+
+            let is_picked_up = players_to_pickup.any(|player| match pickup.get_variant() {
+                PickupType::Armor => player.add_armor(),
+                PickupType::Health => player.add_health(),
+            });
+
+            !is_picked_up
+        });
 
         self.update_bullets();
     }
