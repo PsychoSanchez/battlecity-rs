@@ -1,5 +1,6 @@
+use graphics::Context;
 use opengl_graphics::GlGraphics;
-use piston::{Button, ButtonArgs, Key, RenderArgs, UpdateArgs};
+use piston::{Button, ButtonArgs, Key, UpdateArgs};
 
 use crate::{
     animation::Animation,
@@ -17,7 +18,6 @@ fn is_in_bounds(x: i32, y: i32, column_count: u8, row_count: u8) -> bool {
 }
 
 pub struct Game {
-    gl: GlGraphics,
     column_count: u8,
     row_count: u8,
     players: Vec<Player>,
@@ -34,7 +34,7 @@ pub struct Game {
 }
 
 impl Game {
-    pub fn new(gl: GlGraphics, column_count: u8, row_count: u8) -> Game {
+    pub fn new(column_count: u8, row_count: u8) -> Game {
         let players = vec![
             Player::new(
                 0,
@@ -71,7 +71,6 @@ impl Game {
         ];
 
         Game {
-            gl,
             column_count,
             row_count,
             players,
@@ -125,46 +124,41 @@ impl Game {
         self.render.set_window_size(window_size);
     }
 
-    pub fn render(&mut self, args: &RenderArgs) {
-        use graphics::*;
+    pub fn render(&mut self, context: &Context, gl: &mut GlGraphics) {
         let is_game_over = self.is_game_over();
-        self.gl.draw(args.viewport(), |c, gl| {
-            //Clear the screen
-            clear([0.0, 0.0, 0.0, 1.0], gl);
-            if is_game_over {
-                self.render.draw_game_over(gl, &c);
-                return;
-            }
+        if is_game_over {
+            self.render.draw_game_over(gl, &context);
+            return;
+        }
 
-            self.render.scoreboard.draw(gl, &c);
+        self.render.scoreboard.draw(gl, &context);
 
-            let lerp = f64::clamp(
-                (self.accumulated_time - self.last_update) / self.update_interval,
-                0.0,
-                1.0,
-            );
+        let lerp = f64::clamp(
+            (self.accumulated_time - self.last_update) / self.update_interval,
+            0.0,
+            1.0,
+        );
 
-            for pickup in &self.pickups {
-                self.render.draw(gl, &c, pickup, lerp);
-            }
+        for pickup in &self.pickups {
+            self.render.draw(gl, &context, pickup, lerp);
+        }
 
-            for player in &self.players {
-                self.render.draw(gl, &c, player, lerp);
-            }
+        for player in &self.players {
+            self.render.draw(gl, &context, player, lerp);
+        }
 
-            self.walls
-                .iter()
-                .flat_map(|row| row.iter().filter(|wall| wall.variant() != WallType::Empty))
-                .for_each(|wall| self.render.draw(gl, &c, wall, lerp));
+        self.walls
+            .iter()
+            .flat_map(|row| row.iter().filter(|wall| wall.variant() != WallType::Empty))
+            .for_each(|wall| self.render.draw(gl, &context, wall, lerp));
 
-            for animation in &self.animations {
-                self.render.draw(gl, &c, animation, lerp);
-            }
+        for animation in &self.animations {
+            self.render.draw(gl, &context, animation, lerp);
+        }
 
-            for bullet in &self.bullets {
-                self.render.draw(gl, &c, bullet, lerp)
-            }
-        });
+        for bullet in &self.bullets {
+            self.render.draw(gl, &context, bullet, lerp)
+        }
     }
 
     pub fn update(&mut self, args: &UpdateArgs) {
@@ -338,7 +332,7 @@ impl Game {
             let is_player_killed = players_to_damage
                 .map(|player| {
                     is_player_hit = true;
-                    player.damage()
+                    player.take_damage()
                 })
                 .take(1)
                 .any(|is_killed| is_killed);

@@ -134,7 +134,7 @@ impl Player {
     }
 
     // Returns bool: is killed
-    pub fn damage(&mut self) -> bool {
+    pub fn take_damage(&mut self) -> bool {
         if self.armor > 0 {
             self.armor -= 1;
         } else {
